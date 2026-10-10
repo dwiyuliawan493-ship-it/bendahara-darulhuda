@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Bendahara - Institut Islam Darul Huda Mayak</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS (XLSX) library for Excel export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f4f6f9; }
+        .bg-darulhuda { background-color: #064e3b; }
+        .text-darulhuda { color: #064e3b; }
+        .border-darulhuda { border-color: #064e3b; }
+
+        /* KHUSUS PERBAIKAN CETAK / PDF REPORT */
+        @media print {
+            /* Sembunyikan seluruh tampilan aplikasi web */
+            #loginSection, #appSection, header, aside, nav, .no-print {
+                display: none !important;
+            }
+            
+            /* Tampilkan dan atur penuh bagian laporan cetak */
+            #printReportSection {
+                display: block !important;
+                visibility: visible !important;
+                position: static !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                color: black !important;
+            }
+
+            @page {
+                size: A4 portrait;
+                margin: 12mm;
+            }
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- LOGIN CONTAINER -->
+    <div id="loginSection" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-emerald-950 via-emerald-900 to-green-900">
+        <div class="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-md border border-emerald-100/20 backdrop-blur-md">
+            <div class="text-center mb-6">
+                <div class="w-24 h-24 mx-auto mb-3 bg-emerald-50 rounded-full p-2 flex items-center justify-center shadow-inner border border-emerald-200 overflow-hidden">
+                    <img id="loginLogoImg" src="https://idarma.ac.id/wp-content/uploads/2023/10/LOGO-IDARMA-300x300.png" alt="Logo IDARMA" class="max-h-full max-w-full object-contain" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=IDARMA&background=064e3b&color=fff&size=128';">
+                </div>
+                <h1 class="text-xl font-bold text-gray-900">BENDAHARA KAMPUS</h1>
+                <p class="text-xs text-emerald-700 font-semibold uppercase tracking-wider mt-1">Institut Islam Darul Huda Mayak</p>
+                <p class="text-xs text-gray-400 mt-1">Silakan masuk ke akun pengelola Anda</p>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Email / Username</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><i class="fas fa-envelope text-sm"></i></span>
+                        <input type="email" id="loginEmail" required class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all" placeholder="admin@darulhuda.ac.id">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Kata Sandi</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><i class="fas fa-lock text-sm"></i></span>
+                        <input type="password" id="loginPassword" required class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all" placeholder="••••••••">
+                    </div>
+                </div>
+                <button type="submit" class="w-full py-3 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-semibold shadow-lg shadow-emerald-900/30 text-sm transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-sign-in-alt"></i> Masuk Sekarang
+                </button>
+            </form>
+
+            <div class="mt-6 pt-4 border-t border-gray-100 text-center">
+                <p class="text-xs text-gray-400">Default Login: <span class="font-mono text-emerald-800 font-semibold">admin@darulhuda.ac.id</span> / <span class="font-mono text-emerald-800 font-semibold">admin123</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTAINER -->
+    <div id="appSection" class="hidden min-h-screen flex flex-col pb-20 md:pb-0">
+        
+        <!-- HEADER NAVBAR -->
+        <header class="bg-darulhuda text-white sticky top-0 z-30 shadow-md">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <img id="navLogoImg" src="https://idarma.ac.id/wp-content/uploads/2023/10/LOGO-IDARMA-300x300.png" alt="Logo" class="h-10 w-10 object-contain bg-white rounded-full p-0.5 border" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=IDARMA&background=fff&color=064e3b&size=128';">
+                    <div>
+                        <h2 class="font-bold text-sm sm:text-base leading-tight">INSTITUT ISLAM DARUL HUDA MAYAK</h2>
+                        <p class="text-[10px] sm:text-xs text-emerald-200 font-medium">Sistem Pengelolaan Keuangan Bendahara</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div class="text-right hidden sm:block">
+                        <p id="navUserName" class="text-xs font-semibold">Administrator</p>
+                        <p id="navUserRole" class="text-[10px] text-emerald-200 uppercase">Super Admin</p>
+                    </div>
+                    <button onclick="handleLogout()" class="p-2 bg-emerald-900 hover:bg-emerald-950 rounded-lg text-emerald-100 text-xs flex items-center gap-1.5 transition-all">
+                        <i class="fas fa-power-off text-red-400"></i> <span class="hidden sm:inline">Keluar</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN LAYOUT WITH SIDEBAR & CONTENT -->
+        <div class="flex-1 max-w-7xl w-full mx-auto flex">
+            
+            <!-- DESKTOP SIDEBAR -->
+            <aside class="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 p-4 space-y-1">
+                <button onclick="switchTab('dashboard')" id="side-dashboard" class="nav-link w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 transition-all bg-emerald-50 text-emerald-800">
+                    <i class="fas fa-home w-5"></i> Dashboard
+                </button>
+                <button onclick="switchTab('transaksi')" id="side-transaksi" class="nav-link w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 text-gray-600 hover:bg-gray-50 transition-all">
+                    <i class="fas fa-exchange-alt w-5"></i> Catat Transaksi
+                </button>
+                <button onclick="switchTab('laporan')" id="side-laporan" class="nav-link w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 text-gray-600 hover:bg-gray-50 transition-all">
+                    <i class="fas fa-file-invoice-dollar w-5"></i> Laporan Keuangan
+                </button>
+                <button onclick="switchTab('users')" id="side-users" class="nav-link w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 text-gray-600 hover:bg-gray-50 transition-all">
+                    <i class="fas fa-users-cog w-5"></i> Manajemen User
+                </button>
+                <button onclick="switchTab('pengaturan')" id="side-pengaturan" class="nav-link w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 text-gray-600 hover:bg-gray-50 transition-all">
+                    <i class="fas fa-cog w-5"></i> Pengaturan & TTD
+                </button>
+            </aside>
+
+            <!-- MAIN CONTENT AREA -->
+            <main class="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 overflow-x-hidden">
+                
+                <!-- TAB 1: DASHBOARD -->
+                <div id="tab-dashboard" class="tab-content space-y-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-gray-200 pb-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800">Ringkasan Keuangan</h3>
+                            <p class="text-xs text-gray-500">Kondisi kas dan arus keuangan kampus saat ini</p>
+                        </div>
+                        <span class="text-xs bg-emerald-100 text-emerald-800 font-semibold px-3 py-1 rounded-full flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Real-time Update
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="bg-gradient-to-br from-emerald-800 to-emerald-950 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
+                            <div class="relative z-10">
+                                <p class="text-xs font-medium text-emerald-200 uppercase tracking-wider">Total Kas Kampus</p>
+                                <h4 id="dashSaldo" class="text-2xl font-extrabold mt-2">Rp 0</h4>
+                                <p class="text-[10px] text-emerald-300 mt-2"><i class="fas fa-shield-alt"></i> Saldo Bersih Terkini</p>
+                            </div>
+                            <i class="fas fa-wallet absolute -right-3 -bottom-3 text-7xl opacity-15"></i>
+                        </div>
+
+                        <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden">
+                            <div class="flex items-center gap-3 mb-2">
+                                <div class="w-10 h-10 rounded-xl bg-green-100 text-green-700 flex items-center justify-center font-bold">
+                                    <i class="fas fa-arrow-down"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-gray-500 uppercase">Pemasukan (Kas Masuk)</p>
+                                    <h4 id="dashPemasukan" class="text-xl font-bold text-gray-800">Rp 0</h4>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-gray-400">Total akumulasi dana masuk</p>
+                        </div>
+
+                        <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden">
+                            <div class="flex items-center gap-3 mb-2">
+                                <div class="w-10 h-10 rounded-xl bg-red-100 text-red-700 flex items-center justify-center font-bold">
+                                    <i class="fas fa-arrow-up"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold text-gray-500 uppercase">Pengeluaran (Kas Keluar)</p>
+                                    <h4 id="dashPengeluaran" class="text-xl font-bold text-gray-800">Rp 0</h4>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-gray-400">Total pengeluaran operasional</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                        <h4 class="font-bold text-sm text-gray-700 mb-4 flex items-center gap-2">
+                            <i class="fas fa-chart-bar text-emerald-700"></i> Arus Kas Bulanan
+                        </h4>
+                        <div class="h-64 sm:h-72">
+                            <canvas id="financeChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h4 class="font-bold text-sm text-gray-700">Transaksi Terbaru</h4>
+                            <button onclick="switchTab('laporan')" class="text-xs text-emerald-800 font-semibold hover:underline">Lihat Semua</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-gray-50 text-gray-500 uppercase font-semibold border-b">
+                                        <th class="p-3">Tanggal</th>
+                                        <th class="p-3">Kategori</th>
+                                        <th class="p-3">Keterangan</th>
+                                        <th class="p-3 text-right">Jumlah</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentTransactionsTable" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: PENCATATAN TRANSAKSI -->
+                <div id="tab-transaksi" class="tab-content space-y-6 hidden">
+                    <div class="border-b border-gray-200 pb-4">
+                        <h3 class="text-xl font-bold text-gray-800">Input Transaksi Baru</h3>
+                        <p class="text-xs text-gray-500">Catat pemasukan atau pengeluaran kas kampus secara akurat</p>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 max-w-2xl mx-auto">
+                        <form id="transactionForm" onsubmit="handleAddTransaction(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Jenis Transaksi</label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <label class="cursor-pointer border rounded-xl p-3 flex items-center justify-center gap-2 text-xs font-semibold hover:bg-emerald-50 has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-600 has-[:checked]:text-emerald-800 transition-all">
+                                        <input type="radio" name="txType" value="pemasukan" checked class="text-emerald-700 focus:ring-emerald-600">
+                                        <i class="fas fa-arrow-down text-green-600"></i> Kas Masuk
+                                    </label>
+                                    <label class="cursor-pointer border rounded-xl p-3 flex items-center justify-center gap-2 text-xs font-semibold hover:bg-red-50 has-[:checked]:bg-red-50 has-[:checked]:border-red-600 has-[:checked]:text-red-800 transition-all">
+                                        <input type="radio" name="txType" value="pengeluaran" class="text-red-600 focus:ring-red-600">
+                                        <i class="fas fa-arrow-up text-red-600"></i> Kas Keluar
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tanggal</label>
+                                    <input type="date" id="txDate" required class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 focus:bg-white outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kategori</label>
+                                    <select id="txCategory" required class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 focus:bg-white outline-none">
+                                        <option value="">-- Pilih Kategori --</option>
+                                        <option value="SPP & Iuran Mahasiswa">SPP & Iuran Mahasiswa</option>
+                                        <option value="Infaq & Donasi">Infaq & Donasi</option>
+                                        <option value="Anggaran Perkuliahan">Anggaran Perkuliahan</option>
+                                        <option value="Operasional & Listrik">Operasional & Listrik</option>
+                                        <option value="Gaji Dosen & Staf">Gaji Dosen & Staf</option>
+                                        <option value="Pembangunan & Fasilitas">Pembangunan & Fasilitas</option>
+                                        <option value="Lain-lain">Lain-lain</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Jumlah Nominal (Rp)</label>
+                                <input type="number" id="txAmount" min="1" required placeholder="Contoh: 500000" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 focus:bg-white outline-none font-semibold">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Keterangan / Deskripsi</label>
+                                <textarea id="txDescription" rows="3" required placeholder="Contoh: Pembayaran SPP Semester Ganjil an. Ahmad Nur" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 focus:bg-white outline-none"></textarea>
+                            </div>
+
+                            <button type="submit" class="w-full py-3 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-semibold text-xs transition-all shadow-md flex items-center justify-center gap-2">
+                                <i class="fas fa-save"></i> Simpan Transaksi
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- TAB 3: MANAJEMEN DATA & LAPORAN -->
+                <div id="tab-laporan" class="tab-content space-y-6 hidden">
+                    
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-gray-200 pb-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800">Laporan Keuangan</h3>
+                            <p class="text-xs text-gray-500">Rekapitulasi lengkap kas masuk, kas keluar, dan saldo berjalan</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                            <button onclick="exportToExcel()" class="flex-1 sm:flex-none px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm">
+                                <i class="fas fa-file-excel text-sm"></i> Ekspor Excel (.xlsx)
+                            </button>
+                            <button onclick="printReportPDF()" class="flex-1 sm:flex-none px-3 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm">
+                                <i class="fas fa-print"></i> Cetak / PDF Report
+                            </button>
+                            <button onclick="sendEmailSummary()" class="flex-1 sm:flex-none px-3 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm">
+                                <i class="fas fa-envelope"></i> Email Rekap
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TABEL UTAMA LAPORAN DI WEB -->
+                    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div class="p-4 bg-gray-50 border-b flex flex-wrap justify-between items-center gap-2">
+                            <h4 class="font-bold text-xs uppercase text-gray-700">Tabel Rekapitulasi Kas</h4>
+                            <input type="text" id="searchInput" onkeyup="filterTransactions()" placeholder="Cari kategori/deskripsi..." class="px-3 py-1.5 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-600 bg-white">
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-emerald-950 text-white font-semibold">
+                                        <th class="p-3">Tanggal</th>
+                                        <th class="p-3">Kategori</th>
+                                        <th class="p-3">Jenis</th>
+                                        <th class="p-3">Keterangan Deskripsi</th>
+                                        <th class="p-3 text-right">Pemasukan</th>
+                                        <th class="p-3 text-right">Pengeluaran</th>
+                                        <th class="p-3 text-right">Saldo</th>
+                                        <th class="p-3 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="allTransactionsTable" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- TAB 4: MANAJEMEN USER -->
+                <div id="tab-users" class="tab-content space-y-6 hidden">
+                    <div class="border-b border-gray-200 pb-4">
+                        <h3 class="text-xl font-bold text-gray-800">Manajemen Pengguna</h3>
+                        <p class="text-xs text-gray-500">Kelola akses akun bendahara & pimpinan kampus</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+                            <h4 class="font-bold text-sm text-gray-700">Tambah Pengguna Baru</h4>
+                            <form id="addUserForm" onsubmit="handleAddUser(event)" class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Nama Lengkap</label>
+                                    <input type="text" id="newUserName" required class="w-full p-2 bg-gray-50 border rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Email</label>
+                                    <input type="email" id="newUserEmail" required class="w-full p-2 bg-gray-50 border rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Kata Sandi</label>
+                                    <input type="password" id="newUserPassword" required class="w-full p-2 bg-gray-50 border rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Peran (Role)</label>
+                                    <select id="newUserRole" class="w-full p-2 bg-gray-50 border rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 outline-none">
+                                        <option value="Bendahara Utama">Bendahara Utama</option>
+                                        <option value="Staf Keuangan">Staf Keuangan</option>
+                                        <option value="Pimpinan Kampus">Pimpinan Kampus</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="w-full py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-semibold text-xs transition-all shadow-md">
+                                    <i class="fas fa-user-plus"></i> Tambah User
+                                </button>
+                            </form>
+                        </div>
+
+                        <div class="md:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+                            <h4 class="font-bold text-sm text-gray-700">Daftar Akses Pengguna</h4>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr class="bg-gray-50 text-gray-500 uppercase border-b">
+                                            <th class="p-3">Nama</th>
+                                            <th class="p-3">Email</th>
+                                            <th class="p-3">Role</th>
+                                            <th class="p-3 text-center">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="usersTable" class="divide-y divide-gray-100"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 5: PENGATURAN LOGO & TTD -->
+                <div id="tab-pengaturan" class="tab-content space-y-6 hidden">
+                    <div class="border-b border-gray-200 pb-4">
+                        <h3 class="text-xl font-bold text-gray-800">Pengaturan Logo & Penandatangan Laporan</h3>
+                        <p class="text-xs text-gray-500">Sesuaikan logo resmi kampus serta nama & jabatan penandatangan di laporan PDF</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4 text-center">
+                            <h4 class="font-bold text-sm text-gray-700 uppercase">Logo Resmi Kampus</h4>
+                            <div class="w-28 h-28 mx-auto bg-gray-50 border-2 border-dashed border-emerald-300 rounded-2xl p-2 flex items-center justify-center shadow-sm">
+                                <img id="previewLogoImg" src="https://idarma.ac.id/wp-content/uploads/2023/10/LOGO-IDARMA-300x300.png" class="max-h-full max-w-full object-contain" alt="Preview Logo">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1 text-left">Unggah Logo Baru (PNG/JPG)</label>
+                                <input type="file" id="logoFileInput" accept="image/*" onchange="handleLogoUpload(event)" class="w-full text-xs text-gray-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 cursor-pointer">
+                            </div>
+                            <button onclick="resetDefaultLogo()" class="w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold text-xs transition-all">
+                                <i class="fas fa-undo"></i> Reset Logo Default
+                            </button>
+                        </div>
+
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+                            <h4 class="font-bold text-sm text-gray-700 uppercase">Pengaturan Tanda Tangan Laporan</h4>
+                            <form id="signForm" onsubmit="handleSaveSign(event)" class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Jabatan Penandatangan</label>
+                                    <input type="text" id="inputJabatan" required class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 outline-none" placeholder="Contoh: Bendahara Utama Kampus">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Nama Lengkap & Gelar</label>
+                                    <input type="text" id="inputNamaSign" required class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 outline-none" placeholder="Contoh: H. Ahmad Fauzi, S.E., M.Ak.">
+                                </div>
+                                <button type="submit" class="w-full py-3 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-semibold text-xs transition-all shadow-md">
+                                    <i class="fas fa-save"></i> Simpan Pengaturan TTD
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+
+        <!-- MOBILE BOTTOM NAVIGATION -->
+        <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 flex justify-around p-2 shadow-lg">
+            <button onclick="switchTab('dashboard')" id="mob-dashboard" class="flex flex-col items-center gap-1 text-emerald-800 p-1">
+                <i class="fas fa-home text-base"></i>
+                <span class="text-[10px] font-semibold">Dashboard</span>
+            </button>
+            <button onclick="switchTab('transaksi')" id="mob-transaksi" class="flex flex-col items-center gap-1 text-gray-400 p-1">
+                <i class="fas fa-exchange-alt text-base"></i>
+                <span class="text-[10px] font-semibold">Catat</span>
+            </button>
+            <button onclick="switchTab('laporan')" id="mob-laporan" class="flex flex-col items-center gap-1 text-gray-400 p-1">
+                <i class="fas fa-file-invoice-dollar text-base"></i>
+                <span class="text-[10px] font-semibold">Laporan</span>
+            </button>
+            <button onclick="switchTab('users')" id="mob-users" class="flex flex-col items-center gap-1 text-gray-400 p-1">
+                <i class="fas fa-users-cog text-base"></i>
+                <span class="text-[10px] font-semibold">User</span>
+            </button>
+            <button onclick="switchTab('pengaturan')" id="mob-pengaturan" class="flex flex-col items-center gap-1 text-gray-400 p-1">
+                <i class="fas fa-cog text-base"></i>
+                <span class="text-[10px] font-semibold">Pengaturan</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- ===== DOKUMEN LAPORAN KEUANGAN KHUSUS CETAK / PDF ===== -->
+    <div id="printReportSection" style="display: none;">
+        <div style="font-family: 'Plus Jakarta Sans', Arial, sans-serif; color: #111; padding: 10px;">
+            <!-- KOP SURAT RESMI -->
+            <table style="width: 100%; border-bottom: 3px solid #064e3b; padding-bottom: 12px; margin-bottom: 20px;">
+                <tr>
+                    <td style="width: 80px; vertical-align: middle;">
+                        <img id="printLogoImg" src="https://idarma.ac.id/wp-content/uploads/2023/10/LOGO-IDARMA-300x300.png" style="width: 70px; height: 70px; object-fit: contain;" alt="Logo">
+                    </td>
+                    <td style="vertical-align: middle; text-align: center;">
+                        <h2 style="margin: 0; font-size: 18px; font-weight: 800; text-transform: uppercase; color: #064e3b;">Institut Islam Darul Huda Mayak</h2>
+                        <h3 style="margin: 3px 0; font-size: 13px; font-weight: 700; color: #333;">Sistem Pengelolaan Keuangan & Bendahara Kampus</h3>
+                        <p style="margin: 0; font-size: 10px; color: #555;">Jl. Darul Huda Mayak, Ponorogo, Jawa Timur | Email: info@idarma.ac.id</p>
+                    </td>
+                    <td style="width: 130px; text-align: right; vertical-align: middle; font-size: 11px;">
+                        <strong>LAPORAN KAS</strong><br>
+                        <span id="printDate" style="font-size: 10px; color: #666;"></span>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- JUDUL DOKUMEN -->
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h4 style="margin: 0; font-size: 15px; font-weight: 700; text-transform: uppercase;">Buku Kas Umum Keuangan Kampus</h4>
+                <p style="margin: 3px 0 0 0; font-size: 11px; color: #555;">Rekapitulasi Arus Kas Masuk, Keluar, dan Saldo Berjalan</p>
+            </div>
+
+            <!-- TABEL LAPORAN FORMAL -->
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 30px;">
+                <thead>
+                    <tr style="background-color: #064e3b; color: white;">
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: center; width: 30px;">No</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: center; width: 75px;">Tanggal</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left; width: 110px;">Kategori</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: center; width: 70px;">Jenis</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Keterangan / Deskripsi</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: right; width: 90px;">Pemasukan</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: right; width: 90px;">Pengeluaran</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: right; width: 100px;">Saldo</th>
+                    </tr>
+                </thead>
+                <tbody id="printTransactionsTable">
+                    <!-- Dynamic Print Rows -->
+                </tbody>
+            </table>
+
+            <!-- TANDA TANGAN -->
+            <table style="width: 100%; border-collapse: collapse; page-break-inside: avoid; margin-top: 30px;">
+                <tr>
+                    <td style="width: 60%;"></td>
+                    <td style="width: 40%; text-align: center; font-size: 11px;">
+                        <p style="margin: 0;">Mayak, <span id="printSignDate"></span></p>
+                        <p id="printSignJabatan" style="margin: 4px 0 0 0; font-weight: bold;"></p>
+                        <div style="height: 55px;"></div>
+                        <p id="printSignNama" style="margin: 0; font-weight: bold; text-decoration: underline;"></p>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- SCRIPT LOGIKA APLIKASI -->
+    <script>
+        const DEFAULT_LOGO = "https://idarma.ac.id/wp-content/uploads/2023/10/LOGO-IDARMA-300x300.png";
+
+        const DEFAULT_USERS = [
+            { id: 1, name: "Bendahara Utama IDARMA", email: "admin@darulhuda.ac.id", pass: "admin123", role: "Bendahara Utama" }
+        ];
+
+        const DEFAULT_TRANSACTIONS = [
+            { id: 1, date: "2026-10-01", type: "pemasukan", category: "SPP & Iuran Mahasiswa", amount: 15000000, desc: "Pembayaran SPP Kolektif Semester Ganjil" },
+            { id: 2, date: "2026-10-03", type: "pengeluaran", category: "Operasional & Listrik", amount: 2500000, desc: "Tagihan Listrik & Internet Kampus" }
+        ];
+
+        let users = JSON.parse(localStorage.getItem('idarma_users')) || DEFAULT_USERS;
+        let transactions = JSON.parse(localStorage.getItem('idarma_tx')) || DEFAULT_TRANSACTIONS;
+        let currentUser = JSON.parse(localStorage.getItem('idarma_session')) || null;
+        let currentLogo = localStorage.getItem('idarma_logo') || DEFAULT_LOGO;
+        let currentJabatan = localStorage.getItem('idarma_jabatan') || "Bendahara Utama Kampus";
+        let currentSignName = localStorage.getItem('idarma_signname') || "H. Ahmad Fauzi, S.E.";
+        let myChart = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            applyLogoToUI(currentLogo);
+            applySignToUI();
+            if (currentUser) {
+                showApp();
+            } else {
+                showLogin();
+            }
+            document.getElementById('txDate').valueAsDate = new Date();
+            
+            const dateStr = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('printDate').innerText = "Tanggal: " + dateStr;
+            document.getElementById('printSignDate').innerText = dateStr;
+        });
+
+        function saveData() {
+            localStorage.setItem('idarma_users', JSON.stringify(users));
+            localStorage.setItem('idarma_tx', JSON.stringify(transactions));
+            localStorage.setItem('idarma_logo', currentLogo);
+            localStorage.setItem('idarma_jabatan', currentJabatan);
+            localStorage.setItem('idarma_signname', currentSignName);
+        }
+
+        function applyLogoToUI(logoSrc) {
+            currentLogo = logoSrc;
+            document.getElementById('loginLogoImg').src = logoSrc;
+            document.getElementById('navLogoImg').src = logoSrc;
+            document.getElementById('printLogoImg').src = logoSrc;
+            document.getElementById('previewLogoImg').src = logoSrc;
+        }
+
+        function applySignToUI() {
+            document.getElementById('inputJabatan').value = currentJabatan;
+            document.getElementById('inputNamaSign').value = currentSignName;
+            document.getElementById('printSignJabatan').innerText = currentJabatan;
+            document.getElementById('printSignNama').innerText = currentSignName;
+        }
+
+        function handleLogoUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (file.size > 2 * 1024 * 1024) {
+                    alert("Ukuran gambar terlalu besar! Maksimal 2MB.");
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    applyLogoToUI(evt.target.result);
+                    saveData();
+                    alert("Logo resmi berhasil diperbarui!");
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function resetDefaultLogo() {
+            if (confirm("Kembalikan ke logo standar Institut Islam Darul Huda?")) {
+                applyLogoToUI(DEFAULT_LOGO);
+                saveData();
+            }
+        }
+
+        function handleSaveSign(e) {
+            e.preventDefault();
+            currentJabatan = document.getElementById('inputJabatan').value;
+            currentSignName = document.getElementById('inputNamaSign').value;
+            applySignToUI();
+            saveData();
+            alert("Pengaturan Tanda Tangan berhasil disimpan!");
+        }
+
+        function getProcessedTransactions() {
+            let sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+            let runningBalance = 0;
+            let result = sorted.map(t => {
+                let amt = parseFloat(t.amount);
+                let pemasukan = t.type === 'pemasukan' ? amt : 0;
+                let pengeluaran = t.type === 'pengeluaran' ? amt : 0;
+                runningBalance += (pemasukan - pengeluaran);
+                return { ...t, pemasukan, pengeluaran, saldo: runningBalance };
+            });
+            return result.reverse();
+        }
+
+        function exportToExcel() {
+            if (transactions.length === 0) {
+                alert("Belum ada data transaksi untuk diekspor!");
+                return;
+            }
+
+            const processed = getProcessedTransactions().reverse();
+            const dataFormatted = processed.map((t, idx) => ({
+                "No": idx + 1,
+                "Tanggal": t.date,
+                "Kategori": t.category,
+                "Jenis Transaksi": t.type === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran',
+                "Keterangan Deskripsi": t.desc,
+                "Pemasukan (Rp)": t.pemasukan,
+                "Pengeluaran (Rp)": t.pengeluaran,
+                "Saldo (Rp)": t.saldo
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(dataFormatted);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Keuangan IDARMA");
+
+            const fileName = `Laporan_Keuangan_IDARMA_${new Date().toISOString().slice(0,10)}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+        }
+
+        // FUNGSI KHUSUS UNTUK MENCETAK PDF REPORT
+        function printReportPDF() {
+            renderTables();
+            window.print();
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPassword').value;
+
+            const user = users.find(u => u.email === email && u.pass === pass);
+            if (user) {
+                currentUser = user;
+                localStorage.setItem('idarma_session', JSON.stringify(currentUser));
+                showApp();
+            } else {
+                alert('Email atau kata sandi tidak valid!');
+            }
+        }
+
+        function handleLogout() {
+            if (confirm("Apakah Anda yakin ingin keluar dari sistem?")) {
+                currentUser = null;
+                localStorage.removeItem('idarma_session');
+                showLogin();
+            }
+        }
+
+        function showLogin() {
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('appSection').classList.add('hidden');
+        }
+
+        function showApp() {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('appSection').classList.remove('hidden');
+            document.getElementById('navUserName').innerText = currentUser.name;
+            document.getElementById('navUserRole').innerText = currentUser.role;
+            updateDashboard();
+            renderTables();
+            renderUsers();
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-link').forEach(el => {
+                el.classList.remove('bg-emerald-50', 'text-emerald-800');
+                el.classList.add('text-gray-600');
+            });
+            const sideBtn = document.getElementById(`side-${tabName}`);
+            if (sideBtn) {
+                sideBtn.classList.add('bg-emerald-50', 'text-emerald-800');
+                sideBtn.classList.remove('text-gray-600');
+            }
+
+            document.querySelectorAll('nav button').forEach(el => {
+                el.classList.remove('text-emerald-800');
+                el.classList.add('text-gray-400');
+            });
+            const mobBtn = document.getElementById(`mob-${tabName}`);
+            if (mobBtn) {
+                mobBtn.classList.add('text-emerald-800');
+                mobBtn.classList.remove('text-gray-400');
+            }
+        }
+
+        function formatRupiah(num) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
+        }
+
+        function updateDashboard() {
+            let totalMasuk = 0;
+            let totalKeluar = 0;
+
+            transactions.forEach(t => {
+                if (t.type === 'pemasukan') totalMasuk += parseFloat(t.amount);
+                if (t.type === 'pengeluaran') totalKeluar += parseFloat(t.amount);
+            });
+
+            const totalSaldo = totalMasuk - totalKeluar;
+
+            document.getElementById('dashSaldo').innerText = formatRupiah(totalSaldo);
+            document.getElementById('dashPemasukan').innerText = formatRupiah(totalMasuk);
+            document.getElementById('dashPengeluaran').innerText = formatRupiah(totalKeluar);
+
+            renderChart(totalMasuk, totalKeluar);
+        }
+
+        function renderChart(pemasukan, pengeluaran) {
+            const ctx = document.getElementById('financeChart').getContext('2d');
+            if (myChart) myChart.destroy();
+
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Pemasukan Kas', 'Pengeluaran Kas'],
+                    datasets: [{
+                        label: 'Nominal Kas (Rp)',
+                        data: [pemasukan, pengeluaran],
+                        backgroundColor: ['#059669', '#dc2626'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function handleAddTransaction(e) {
+            e.preventDefault();
+            const type = document.querySelector('input[name="txType"]:checked').value;
+            const date = document.getElementById('txDate').value;
+            const category = document.getElementById('txCategory').value;
+            const amount = parseFloat(document.getElementById('txAmount').value);
+            const desc = document.getElementById('txDescription').value;
+
+            const newTx = { id: Date.now(), date, type, category, amount, desc };
+            transactions.unshift(newTx);
+            saveData();
+            updateDashboard();
+            renderTables();
+
+            document.getElementById('transactionForm').reset();
+            document.getElementById('txDate').valueAsDate = new Date();
+            alert("Transaksi berhasil dicatat!");
+            switchTab('dashboard');
+        }
+
+        function renderTables() {
+            const recentTbody = document.getElementById('recentTransactionsTable');
+            const allTbody = document.getElementById('allTransactionsTable');
+            const printTbody = document.getElementById('printTransactionsTable');
+
+            recentTbody.innerHTML = '';
+            allTbody.innerHTML = '';
+            printTbody.innerHTML = '';
+
+            const processed = getProcessedTransactions();
+            const chronologicallySorted = [...processed].reverse(); // Urut lama ke baru untuk laporan cetak
+
+            // Render Print Table Rows (Kronologis)
+            chronologicallySorted.forEach((t, index) => {
+                const isIncome = t.type === 'pemasukan';
+                printTbody.innerHTML += `
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${index + 1}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${t.date}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px;">${t.category}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${isIncome ? 'Pemasukan' : 'Pengeluaran'}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px;">${t.desc}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px; text-align: right; color: ${isIncome ? '#047857' : '#333'}; font-weight: ${isIncome ? 'bold' : 'normal'};">${t.pemasukan > 0 ? formatRupiah(t.pemasukan) : '-'}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px; text-align: right; color: ${!isIncome ? '#b91c1c' : '#333'}; font-weight: ${!isIncome ? 'bold' : 'normal'};">${t.pengeluaran > 0 ? formatRupiah(t.pengeluaran) : '-'}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px; text-align: right; font-weight: bold;">${formatRupiah(t.saldo)}</td>
+                    </tr>
+                `;
+            });
+
+            // Render Web UI Tables (Terkini di atas)
+            processed.forEach((t, index) => {
+                const isIncome = t.type === 'pemasukan';
+                const typeBadge = isIncome 
+                    ? `<span class="px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold text-[10px]">Pemasukan</span>`
+                    : `<span class="px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-semibold text-[10px]">Pengeluaran</span>`;
+                
+                const pemasukanStr = t.pemasukan > 0 ? `<span class="text-green-700 font-bold">${formatRupiah(t.pemasukan)}</span>` : '-';
+                const pengeluaranStr = t.pengeluaran > 0 ? `<span class="text-red-600 font-bold">${formatRupiah(t.pengeluaran)}</span>` : '-';
+                const saldoStr = `<span class="font-bold text-gray-900">${formatRupiah(t.saldo)}</span>`;
+
+                if (index < 5) {
+                    recentTbody.innerHTML += `
+                        <tr>
+                            <td class="p-3">${t.date}</td>
+                            <td class="p-3 font-medium text-gray-700">${t.category}</td>
+                            <td class="p-3 text-gray-500">${t.desc}</td>
+                            <td class="p-3 text-right">${isIncome ? '+' : '-'}${formatRupiah(t.amount)}</td>
+                        </tr>
+                    `;
+                }
+
+                allTbody.innerHTML += `
+                    <tr>
+                        <td class="p-3">${t.date}</td>
+                        <td class="p-3 font-medium text-gray-700">${t.category}</td>
+                        <td class="p-3">${typeBadge}</td>
+                        <td class="p-3 text-gray-600">${t.desc}</td>
+                        <td class="p-3 text-right">${pemasukanStr}</td>
+                        <td class="p-3 text-right">${pengeluaranStr}</td>
+                        <td class="p-3 text-right">${saldoStr}</td>
+                        <td class="p-3 text-center">
+                            <button onclick="deleteTransaction(${t.id})" class="text-red-500 hover:text-red-700 p-1"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function deleteTransaction(id) {
+            if (confirm("Hapus transaksi ini?")) {
+                transactions = transactions.filter(t => t.id !== id);
+                saveData();
+                updateDashboard();
+                renderTables();
+            }
+        }
+
+        function filterTransactions() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#allTransactionsTable tr');
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        }
+
+        function sendEmailSummary() {
+            let totalMasuk = 0, totalKeluar = 0;
+            transactions.forEach(t => {
+                if (t.type === 'pemasukan') totalMasuk += t.amount;
+                if (t.type === 'pengeluaran') totalKeluar += t.amount;
+            });
+            const saldo = totalMasuk - totalKeluar;
+
+            const userEmail = prompt("Masukkan alamat email tujuan untuk menerima laporan rekapitulasi:", currentUser.email);
+            if (userEmail) {
+                const subject = encodeURIComponent("Laporan Keuangan Institut Islam Darul Huda Mayak");
+                const body = encodeURIComponent(
+                    `REKAPITULASI KEUANGAN KAMPUS IDARMA\n` +
+                    `===================================\n` +
+                    `Total Pemasukan : ${formatRupiah(totalMasuk)}\n` +
+                    `Total Pengeluaran: ${formatRupiah(totalKeluar)}\n` +
+                    `Saldo Bersih    : ${formatRupiah(saldo)}\n\n` +
+                    `Laporan ini dihasilkan secara otomatis dari Sistem Bendahara IDARMA.`
+                );
+                window.location.href = `mailto:${userEmail}?subject=${subject}&body=${body}`;
+            }
+        }
+
+        function renderUsers() {
+            const tbody = document.getElementById('usersTable');
+            tbody.innerHTML = '';
+            users.forEach(u => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="p-3 font-semibold">${u.name}</td>
+                        <td class="p-3 text-gray-600">${u.email}</td>
+                        <td class="p-3"><span class="bg-gray-100 text-gray-800 px-2 py-0.5 rounded text-[10px] font-semibold">${u.role}</span></td>
+                        <td class="p-3 text-center">
+                            ${u.id !== 1 ? `<button onclick="deleteUser(${u.id})" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>` : '-'}
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function handleAddUser(e) {
+            e.preventDefault();
+            const name = document.getElementById('newUserName').value;
+            const email = document.getElementById('newUserEmail').value;
+            const pass = document.getElementById('newUserPassword').value;
+            const role = document.getElementById('newUserRole').value;
+
+            users.push({ id: Date.now(), name, email, pass, role });
+            saveData();
+            renderUsers();
+            document.getElementById('addUserForm').reset();
+            alert("Pengguna baru berhasil ditambahkan!");
+        }
+
+        function deleteUser(id) {
+            if (confirm("Hapus pengguna ini?")) {
+                users = users.filter(u => u.id !== id);
+                saveData();
+                renderUsers();
+            }
+        }
+    </script>
+</body>
+</html>
