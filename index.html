@@ -10,8 +10,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- SheetJS (XLSX) library for Excel export -->
+    <!-- SheetJS (XLSX) for Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Supabase JS Client v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f4f6f9; }
@@ -19,29 +21,14 @@
         .text-darulhuda { color: #064e3b; }
         .border-darulhuda { border-color: #064e3b; }
 
-        /* KHUSUS PERBAIKAN CETAK / PDF REPORT */
         @media print {
-            /* Sembunyikan seluruh tampilan aplikasi web */
-            #loginSection, #appSection, header, aside, nav, .no-print {
-                display: none !important;
-            }
-            
-            /* Tampilkan dan atur penuh bagian laporan cetak */
+            body * { visibility: hidden; }
+            #printReportSection, #printReportSection * { visibility: visible; }
             #printReportSection {
-                display: block !important;
-                visibility: visible !important;
-                position: static !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                background: white !important;
-                color: black !important;
+                position: absolute; left: 0; top: 0; width: 100%;
+                margin: 0; padding: 10mm; background: white !important; color: black !important;
             }
-
-            @page {
-                size: A4 portrait;
-                margin: 12mm;
-            }
+            @page { size: A4 portrait; margin: 12mm; }
         }
     </style>
 </head>
@@ -129,7 +116,7 @@
                     <i class="fas fa-users-cog w-5"></i> Manajemen User
                 </button>
                 <button onclick="switchTab('pengaturan')" id="side-pengaturan" class="nav-link w-full text-left px-4 py-3 rounded-xl font-medium text-sm flex items-center gap-3 text-gray-600 hover:bg-gray-50 transition-all">
-                    <i class="fas fa-cog w-5"></i> Pengaturan & TTD
+                    <i class="fas fa-cloud w-5"></i> Pengaturan & Supabase
                 </button>
             </aside>
 
@@ -143,9 +130,11 @@
                             <h3 class="text-xl font-bold text-gray-800">Ringkasan Keuangan</h3>
                             <p class="text-xs text-gray-500">Kondisi kas dan arus keuangan kampus saat ini</p>
                         </div>
-                        <span class="text-xs bg-emerald-100 text-emerald-800 font-semibold px-3 py-1 rounded-full flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Real-time Update
-                        </span>
+                        <div class="flex items-center gap-2">
+                            <span id="syncStatus" class="text-xs bg-amber-100 text-amber-800 font-semibold px-3 py-1 rounded-full flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Offline / Local Mode
+                            </span>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -269,7 +258,7 @@
                             </div>
 
                             <button type="submit" class="w-full py-3 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-semibold text-xs transition-all shadow-md flex items-center justify-center gap-2">
-                                <i class="fas fa-save"></i> Simpan Transaksi
+                                <i class="fas fa-save"></i> Simpan Transaksi (Sinkron Cloud)
                             </button>
                         </form>
                     </div>
@@ -379,41 +368,59 @@
                     </div>
                 </div>
 
-                <!-- TAB 5: PENGATURAN LOGO & TTD -->
+                <!-- TAB 5: PENGATURAN LOGO, TTD & SUPABASE -->
                 <div id="tab-pengaturan" class="tab-content space-y-6 hidden">
                     <div class="border-b border-gray-200 pb-4">
-                        <h3 class="text-xl font-bold text-gray-800">Pengaturan Logo & Penandatangan Laporan</h3>
-                        <p class="text-xs text-gray-500">Sesuaikan logo resmi kampus serta nama & jabatan penandatangan di laporan PDF</p>
+                        <h3 class="text-xl font-bold text-gray-800">Pengaturan & Koneksi Database Supabase</h3>
+                        <p class="text-xs text-gray-500">Atur logo, penandatangan laporan, serta hubungkan database cloud agar sinkron HP & Komputer</p>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4 text-center">
-                            <h4 class="font-bold text-sm text-gray-700 uppercase">Logo Resmi Kampus</h4>
-                            <div class="w-28 h-28 mx-auto bg-gray-50 border-2 border-dashed border-emerald-300 rounded-2xl p-2 flex items-center justify-center shadow-sm">
-                                <img id="previewLogoImg" src="https://idarma.ac.id/wp-content/uploads/2023/10/LOGO-IDARMA-300x300.png" class="max-h-full max-w-full object-contain" alt="Preview Logo">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-700 mb-1 text-left">Unggah Logo Baru (PNG/JPG)</label>
-                                <input type="file" id="logoFileInput" accept="image/*" onchange="handleLogoUpload(event)" class="w-full text-xs text-gray-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 cursor-pointer">
-                            </div>
-                            <button onclick="resetDefaultLogo()" class="w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold text-xs transition-all">
-                                <i class="fas fa-undo"></i> Reset Logo Default
-                            </button>
-                        </div>
-
+                        <!-- Kotak Logo & TTD -->
                         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
-                            <h4 class="font-bold text-sm text-gray-700 uppercase">Pengaturan Tanda Tangan Laporan</h4>
-                            <form id="signForm" onsubmit="handleSaveSign(event)" class="space-y-4">
+                            <h4 class="font-bold text-sm text-gray-700 uppercase">Logo & Tanda Tangan</h4>
+                            <div class="text-center">
+                                <div class="w-20 h-20 mx-auto bg-gray-50 border border-emerald-300 rounded-xl p-1 flex items-center justify-center mb-2">
+                                    <img id="previewLogoImg" src="https://idarma.ac.id/wp-content/uploads/2023/10/LOGO-IDARMA-300x300.png" class="max-h-full max-w-full object-contain" alt="Logo">
+                                </div>
+                                <input type="file" id="logoFileInput" accept="image/*" onchange="handleLogoUpload(event)" class="w-full text-xs text-gray-500 file:py-1 file:px-2 file:rounded-lg file:border-0 file:bg-emerald-50 file:text-emerald-800 cursor-pointer">
+                            </div>
+                            <form id="signForm" onsubmit="handleSaveSign(event)" class="space-y-3 pt-2">
                                 <div>
                                     <label class="block text-xs font-semibold text-gray-700 mb-1">Jabatan Penandatangan</label>
-                                    <input type="text" id="inputJabatan" required class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 outline-none" placeholder="Contoh: Bendahara Utama Kampus">
+                                    <input type="text" id="inputJabatan" required class="w-full p-2 bg-gray-50 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-600">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-semibold text-gray-700 mb-1">Nama Lengkap & Gelar</label>
-                                    <input type="text" id="inputNamaSign" required class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 outline-none" placeholder="Contoh: H. Ahmad Fauzi, S.E., M.Ak.">
+                                    <input type="text" id="inputNamaSign" required class="w-full p-2 bg-gray-50 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-600">
                                 </div>
-                                <button type="submit" class="w-full py-3 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-semibold text-xs transition-all shadow-md">
-                                    <i class="fas fa-save"></i> Simpan Pengaturan TTD
+                                <button type="submit" class="w-full py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-semibold text-xs shadow-md">
+                                    Simpan TTD
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Kotak Supabase Config -->
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+                            <h4 class="font-bold text-sm text-gray-700 uppercase flex items-center gap-2">
+                                <i class="fas fa-cloud text-emerald-700"></i> Konfigurasi Cloud Supabase
+                            </h4>
+                            <p class="text-[11px] text-gray-500">Masukkan Project URL dan Anon Key dari Supabase Anda agar data otomatis sinkron antar perangkat.</p>
+                            
+                            <form id="supabaseConfigForm" onsubmit="handleSaveSupabaseConfig(event)" class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Supabase Project URL</label>
+                                    <input type="text" id="inputSbUrl" placeholder="https://xxxxxx.supabase.co" class="w-full p-2 bg-gray-50 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-600 font-mono">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Supabase Anon / Public Key</label>
+                                    <input type="password" id="inputSbKey" placeholder="eyJhbGciOiJIUzI1NiIsIn..." class="w-full p-2 bg-gray-50 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-600 font-mono">
+                                </div>
+                                <button type="submit" class="w-full py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-semibold text-xs transition-all shadow-md">
+                                    <i class="fas fa-plug"></i> Hubungkan & Simpan Database
+                                </button>
+                                <button type="button" onclick="disconnectSupabase()" class="w-full py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl font-semibold text-xs transition-all">
+                                    Putuskan / Mode Lokal
                                 </button>
                             </form>
                         </div>
@@ -448,10 +455,9 @@
         </nav>
     </div>
 
-    <!-- ===== DOKUMEN LAPORAN KEUANGAN KHUSUS CETAK / PDF ===== -->
+    <!-- DOKUMEN LAPORAN CETAK / PDF -->
     <div id="printReportSection" style="display: none;">
         <div style="font-family: 'Plus Jakarta Sans', Arial, sans-serif; color: #111; padding: 10px;">
-            <!-- KOP SURAT RESMI -->
             <table style="width: 100%; border-bottom: 3px solid #064e3b; padding-bottom: 12px; margin-bottom: 20px;">
                 <tr>
                     <td style="width: 80px; vertical-align: middle;">
@@ -469,13 +475,11 @@
                 </tr>
             </table>
 
-            <!-- JUDUL DOKUMEN -->
             <div style="text-align: center; margin-bottom: 20px;">
                 <h4 style="margin: 0; font-size: 15px; font-weight: 700; text-transform: uppercase;">Buku Kas Umum Keuangan Kampus</h4>
                 <p style="margin: 3px 0 0 0; font-size: 11px; color: #555;">Rekapitulasi Arus Kas Masuk, Keluar, dan Saldo Berjalan</p>
             </div>
 
-            <!-- TABEL LAPORAN FORMAL -->
             <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 30px;">
                 <thead>
                     <tr style="background-color: #064e3b; color: white;">
@@ -489,12 +493,9 @@
                         <th style="border: 1px solid #ddd; padding: 8px; text-align: right; width: 100px;">Saldo</th>
                     </tr>
                 </thead>
-                <tbody id="printTransactionsTable">
-                    <!-- Dynamic Print Rows -->
-                </tbody>
+                <tbody id="printTransactionsTable"></tbody>
             </table>
 
-            <!-- TANDA TANGAN -->
             <table style="width: 100%; border-collapse: collapse; page-break-inside: avoid; margin-top: 30px;">
                 <tr>
                     <td style="width: 60%;"></td>
@@ -509,14 +510,12 @@
         </div>
     </div>
 
-    <!-- SCRIPT LOGIKA APLIKASI -->
+    <!-- SCRIPT APLIKASI & SUPABASE -->
     <script>
         const DEFAULT_LOGO = "https://idarma.ac.id/wp-content/uploads/2023/10/LOGO-IDARMA-300x300.png";
-
         const DEFAULT_USERS = [
             { id: 1, name: "Bendahara Utama IDARMA", email: "admin@darulhuda.ac.id", pass: "admin123", role: "Bendahara Utama" }
         ];
-
         const DEFAULT_TRANSACTIONS = [
             { id: 1, date: "2026-10-01", type: "pemasukan", category: "SPP & Iuran Mahasiswa", amount: 15000000, desc: "Pembayaran SPP Kolektif Semester Ganjil" },
             { id: 2, date: "2026-10-03", type: "pengeluaran", category: "Operasional & Listrik", amount: 2500000, desc: "Tagihan Listrik & Internet Kampus" }
@@ -528,11 +527,17 @@
         let currentLogo = localStorage.getItem('idarma_logo') || DEFAULT_LOGO;
         let currentJabatan = localStorage.getItem('idarma_jabatan') || "Bendahara Utama Kampus";
         let currentSignName = localStorage.getItem('idarma_signname') || "H. Ahmad Fauzi, S.E.";
+        
+        let sbUrl = localStorage.getItem('idarma_sb_url') || "";
+        let sbKey = localStorage.getItem('idarma_sb_key') || "";
+        let supabaseClient = null;
         let myChart = null;
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             applyLogoToUI(currentLogo);
             applySignToUI();
+            initSupabase();
+
             if (currentUser) {
                 showApp();
             } else {
@@ -543,9 +548,73 @@
             const dateStr = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
             document.getElementById('printDate').innerText = "Tanggal: " + dateStr;
             document.getElementById('printSignDate').innerText = dateStr;
+
+            if (sbUrl && sbKey) {
+                await fetchTransactionsFromCloud();
+            }
         });
 
-        function saveData() {
+        function initSupabase() {
+            if (sbUrl && sbKey && window.supabase) {
+                try {
+                    supabaseClient = window.supabase.createClient(sbUrl, sbKey);
+                    document.getElementById('syncStatus').className = "text-xs bg-emerald-100 text-emerald-800 font-semibold px-3 py-1 rounded-full flex items-center gap-1.5";
+                    document.getElementById('syncStatus').innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Cloud Supabase Connected';
+                } catch(e) {
+                    console.error(e);
+                }
+            }
+        }
+
+        async function fetchTransactionsFromCloud() {
+            if (!supabaseClient) return;
+            const { data, error } = await supabaseClient.from('transactions').select('*').order('id', { ascending: false });
+            if (!error && data) {
+                transactions = data;
+                updateDashboard();
+                renderTables();
+            }
+        }
+
+        async function saveDataToCloud(newTx) {
+            if (!supabaseClient) return;
+            await supabaseClient.from('transactions').insert([newTx]);
+        }
+
+        async function deleteDataFromCloud(id) {
+            if (!supabaseClient) return;
+            await supabaseClient.from('transactions').delete().eq('id', id);
+        }
+
+        function handleSaveSupabaseConfig(e) {
+            e.preventDefault();
+            sbUrl = document.getElementById('inputSbUrl').value.trim();
+            sbKey = document.getElementById('inputSbKey').value.trim();
+            localStorage.setItem('idarma_sb_url', sbUrl);
+            localStorage.setItem('idarma_sb_key', sbKey);
+            initSupabase();
+            if (supabaseClient) {
+                alert("Koneksi Supabase berhasil disimpan! Data disinkronkan.");
+                fetchTransactionsFromCloud();
+            } else {
+                alert("Gagal terhubung, periksa kembali URL dan Key Anda.");
+            }
+        }
+
+        function disconnectSupabase() {
+            if (confirm("Putuskan sambungan Supabase dan kembali ke mode lokal?")) {
+                localStorage.removeItem('idarma_sb_url');
+                localStorage.removeItem('idarma_sb_key');
+                sbUrl = ""; sbKey = ""; supabaseClient = null;
+                document.getElementById('inputSbUrl').value = "";
+                document.getElementById('inputSbKey').value = "";
+                document.getElementById('syncStatus').className = "text-xs bg-amber-100 text-amber-800 font-semibold px-3 py-1 rounded-full flex items-center gap-1.5";
+                document.getElementById('syncStatus').innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Offline / Local Mode';
+                alert("Berhasil beralih ke Mode Lokal.");
+            }
+        }
+
+        function saveDataLocal() {
             localStorage.setItem('idarma_users', JSON.stringify(users));
             localStorage.setItem('idarma_tx', JSON.stringify(transactions));
             localStorage.setItem('idarma_logo', currentLogo);
@@ -566,30 +635,28 @@
             document.getElementById('inputNamaSign').value = currentSignName;
             document.getElementById('printSignJabatan').innerText = currentJabatan;
             document.getElementById('printSignNama').innerText = currentSignName;
+            if (sbUrl) {
+                document.getElementById('inputSbUrl').value = sbUrl;
+            }
         }
 
         function handleLogoUpload(e) {
             const file = e.target.files[0];
             if (file) {
-                if (file.size > 2 * 1024 * 1024) {
-                    alert("Ukuran gambar terlalu besar! Maksimal 2MB.");
-                    return;
-                }
+                if (file.size > 2 * 1024 * 1024) { alert("Ukuran gambar maksimal 2MB."); return; }
                 const reader = new FileReader();
                 reader.onload = function(evt) {
                     applyLogoToUI(evt.target.result);
-                    saveData();
-                    alert("Logo resmi berhasil diperbarui!");
+                    saveDataLocal();
+                    alert("Logo berhasil diperbarui!");
                 };
                 reader.readAsDataURL(file);
             }
         }
 
         function resetDefaultLogo() {
-            if (confirm("Kembalikan ke logo standar Institut Islam Darul Huda?")) {
-                applyLogoToUI(DEFAULT_LOGO);
-                saveData();
-            }
+            applyLogoToUI(DEFAULT_LOGO);
+            saveDataLocal();
         }
 
         function handleSaveSign(e) {
@@ -597,7 +664,7 @@
             currentJabatan = document.getElementById('inputJabatan').value;
             currentSignName = document.getElementById('inputNamaSign').value;
             applySignToUI();
-            saveData();
+            saveDataLocal();
             alert("Pengaturan Tanda Tangan berhasil disimpan!");
         }
 
@@ -615,32 +682,20 @@
         }
 
         function exportToExcel() {
-            if (transactions.length === 0) {
-                alert("Belum ada data transaksi untuk diekspor!");
-                return;
-            }
-
+            if (transactions.length === 0) { alert("Belum ada data transaksi!"); return; }
             const processed = getProcessedTransactions().reverse();
             const dataFormatted = processed.map((t, idx) => ({
-                "No": idx + 1,
-                "Tanggal": t.date,
-                "Kategori": t.category,
+                "No": idx + 1, "Tanggal": t.date, "Kategori": t.category,
                 "Jenis Transaksi": t.type === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran',
-                "Keterangan Deskripsi": t.desc,
-                "Pemasukan (Rp)": t.pemasukan,
-                "Pengeluaran (Rp)": t.pengeluaran,
-                "Saldo (Rp)": t.saldo
+                "Keterangan Deskripsi": t.desc, "Pemasukan (Rp)": t.pemasukan,
+                "Pengeluaran (Rp)": t.pengeluaran, "Saldo (Rp)": t.saldo
             }));
-
             const worksheet = XLSX.utils.json_to_sheet(dataFormatted);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Keuangan IDARMA");
-
-            const fileName = `Laporan_Keuangan_IDARMA_${new Date().toISOString().slice(0,10)}.xlsx`;
-            XLSX.writeFile(workbook, fileName);
+            XLSX.writeFile(workbook, `Laporan_Keuangan_IDARMA_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
-        // FUNGSI KHUSUS UNTUK MENCETAK PDF REPORT
         function printReportPDF() {
             renderTables();
             window.print();
@@ -650,7 +705,6 @@
             e.preventDefault();
             const email = document.getElementById('loginEmail').value;
             const pass = document.getElementById('loginPassword').value;
-
             const user = users.find(u => u.email === email && u.pass === pass);
             if (user) {
                 currentUser = user;
@@ -662,7 +716,7 @@
         }
 
         function handleLogout() {
-            if (confirm("Apakah Anda yakin ingin keluar dari sistem?")) {
+            if (confirm("Keluar dari sistem?")) {
                 currentUser = null;
                 localStorage.removeItem('idarma_session');
                 showLogin();
@@ -687,26 +741,15 @@
         function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-
             document.querySelectorAll('.nav-link').forEach(el => {
                 el.classList.remove('bg-emerald-50', 'text-emerald-800');
                 el.classList.add('text-gray-600');
             });
             const sideBtn = document.getElementById(`side-${tabName}`);
-            if (sideBtn) {
-                sideBtn.classList.add('bg-emerald-50', 'text-emerald-800');
-                sideBtn.classList.remove('text-gray-600');
-            }
-
-            document.querySelectorAll('nav button').forEach(el => {
-                el.classList.remove('text-emerald-800');
-                el.classList.add('text-gray-400');
-            });
+            if (sideBtn) { sideBtn.classList.add('bg-emerald-50', 'text-emerald-800'); sideBtn.classList.remove('text-gray-600'); }
+            document.querySelectorAll('nav button').forEach(el => { el.classList.remove('text-emerald-800'); el.classList.add('text-gray-400'); });
             const mobBtn = document.getElementById(`mob-${tabName}`);
-            if (mobBtn) {
-                mobBtn.classList.add('text-emerald-800');
-                mobBtn.classList.remove('text-gray-400');
-            }
+            if (mobBtn) { mobBtn.classList.add('text-emerald-800'); mobBtn.classList.remove('text-gray-400'); }
         }
 
         function formatRupiah(num) {
@@ -714,48 +757,32 @@
         }
 
         function updateDashboard() {
-            let totalMasuk = 0;
-            let totalKeluar = 0;
-
+            let totalMasuk = 0, totalKeluar = 0;
             transactions.forEach(t => {
                 if (t.type === 'pemasukan') totalMasuk += parseFloat(t.amount);
                 if (t.type === 'pengeluaran') totalKeluar += parseFloat(t.amount);
             });
-
             const totalSaldo = totalMasuk - totalKeluar;
-
             document.getElementById('dashSaldo').innerText = formatRupiah(totalSaldo);
             document.getElementById('dashPemasukan').innerText = formatRupiah(totalMasuk);
             document.getElementById('dashPengeluaran').innerText = formatRupiah(totalKeluar);
-
             renderChart(totalMasuk, totalKeluar);
         }
 
         function renderChart(pemasukan, pengeluaran) {
             const ctx = document.getElementById('financeChart').getContext('2d');
             if (myChart) myChart.destroy();
-
             myChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: ['Pemasukan Kas', 'Pengeluaran Kas'],
-                    datasets: [{
-                        label: 'Nominal Kas (Rp)',
-                        data: [pemasukan, pengeluaran],
-                        backgroundColor: ['#059669', '#dc2626'],
-                        borderRadius: 8
-                    }]
+                    datasets: [{ label: 'Nominal Kas (Rp)', data: [pemasukan, pengeluaran], backgroundColor: ['#059669', '#dc2626'], borderRadius: 8 }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } }
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
             });
         }
 
-        function handleAddTransaction(e) {
+        async function handleAddTransaction(e) {
             e.preventDefault();
             const type = document.querySelector('input[name="txType"]:checked').value;
             const date = document.getElementById('txDate').value;
@@ -765,13 +792,14 @@
 
             const newTx = { id: Date.now(), date, type, category, amount, desc };
             transactions.unshift(newTx);
-            saveData();
+            saveDataLocal();
+            await saveDataToCloud(newTx);
+
             updateDashboard();
             renderTables();
-
             document.getElementById('transactionForm').reset();
             document.getElementById('txDate').valueAsDate = new Date();
-            alert("Transaksi berhasil dicatat!");
+            alert("Transaksi berhasil dicatat dan disinkronkan ke Cloud!");
             switchTab('dashboard');
         }
 
@@ -785,9 +813,8 @@
             printTbody.innerHTML = '';
 
             const processed = getProcessedTransactions();
-            const chronologicallySorted = [...processed].reverse(); // Urut lama ke baru untuk laporan cetak
+            const chronologicallySorted = [...processed].reverse();
 
-            // Render Print Table Rows (Kronologis)
             chronologicallySorted.forEach((t, index) => {
                 const isIncome = t.type === 'pemasukan';
                 printTbody.innerHTML += `
@@ -797,14 +824,13 @@
                         <td style="border: 1px solid #ddd; padding: 6px;">${t.category}</td>
                         <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${isIncome ? 'Pemasukan' : 'Pengeluaran'}</td>
                         <td style="border: 1px solid #ddd; padding: 6px;">${t.desc}</td>
-                        <td style="border: 1px solid #ddd; padding: 6px; text-align: right; color: ${isIncome ? '#047857' : '#333'}; font-weight: ${isIncome ? 'bold' : 'normal'};">${t.pemasukan > 0 ? formatRupiah(t.pemasukan) : '-'}</td>
-                        <td style="border: 1px solid #ddd; padding: 6px; text-align: right; color: ${!isIncome ? '#b91c1c' : '#333'}; font-weight: ${!isIncome ? 'bold' : 'normal'};">${t.pengeluaran > 0 ? formatRupiah(t.pengeluaran) : '-'}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px; text-align: right; color: ${isIncome ? '#047857' : '#333'};">${t.pemasukan > 0 ? formatRupiah(t.pemasukan) : '-'}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px; text-align: right; color: ${!isIncome ? '#b91c1c' : '#333'};">${t.pengeluaran > 0 ? formatRupiah(t.pengeluaran) : '-'}</td>
                         <td style="border: 1px solid #ddd; padding: 6px; text-align: right; font-weight: bold;">${formatRupiah(t.saldo)}</td>
                     </tr>
                 `;
             });
 
-            // Render Web UI Tables (Terkini di atas)
             processed.forEach((t, index) => {
                 const isIncome = t.type === 'pemasukan';
                 const typeBadge = isIncome 
@@ -843,10 +869,11 @@
             });
         }
 
-        function deleteTransaction(id) {
+        async function deleteTransaction(id) {
             if (confirm("Hapus transaksi ini?")) {
                 transactions = transactions.filter(t => t.id !== id);
-                saveData();
+                saveDataLocal();
+                await deleteDataFromCloud(id);
                 updateDashboard();
                 renderTables();
             }
@@ -868,17 +895,14 @@
                 if (t.type === 'pengeluaran') totalKeluar += t.amount;
             });
             const saldo = totalMasuk - totalKeluar;
-
-            const userEmail = prompt("Masukkan alamat email tujuan untuk menerima laporan rekapitulasi:", currentUser.email);
+            const userEmail = prompt("Masukkan alamat email tujuan laporan:", currentUser.email);
             if (userEmail) {
                 const subject = encodeURIComponent("Laporan Keuangan Institut Islam Darul Huda Mayak");
                 const body = encodeURIComponent(
                     `REKAPITULASI KEUANGAN KAMPUS IDARMA\n` +
-                    `===================================\n` +
                     `Total Pemasukan : ${formatRupiah(totalMasuk)}\n` +
                     `Total Pengeluaran: ${formatRupiah(totalKeluar)}\n` +
-                    `Saldo Bersih    : ${formatRupiah(saldo)}\n\n` +
-                    `Laporan ini dihasilkan secara otomatis dari Sistem Bendahara IDARMA.`
+                    `Saldo Bersih    : ${formatRupiah(saldo)}\n`
                 );
                 window.location.href = `mailto:${userEmail}?subject=${subject}&body=${body}`;
             }
@@ -907,18 +931,17 @@
             const email = document.getElementById('newUserEmail').value;
             const pass = document.getElementById('newUserPassword').value;
             const role = document.getElementById('newUserRole').value;
-
             users.push({ id: Date.now(), name, email, pass, role });
-            saveData();
+            saveDataLocal();
             renderUsers();
             document.getElementById('addUserForm').reset();
-            alert("Pengguna baru berhasil ditambahkan!");
+            alert("Pengguna baru ditambahkan!");
         }
 
         function deleteUser(id) {
             if (confirm("Hapus pengguna ini?")) {
                 users = users.filter(u => u.id !== id);
-                saveData();
+                saveDataLocal();
                 renderUsers();
             }
         }
