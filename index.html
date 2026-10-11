@@ -32,40 +32,39 @@
         .border-darulhuda { border-color: #064e3b; }
 
         @media print {
-    @media print {
-    body * {
-        visibility: hidden !important;
-    }
-    #printReportSection, #printReportSection * {
-        visibility: visible !important;
-    }
-    #printReportSection {
-        display: block !important;
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 10mm !important;
-        background: white !important;
-        color: black !important;
-    }
-    #printReportSection table {
-        display: table !important;
-        width: 100% !important;
-        border-collapse: collapse !important;
-    }
-    #printReportSection tr {
-        display: table-row !important;
-    }
-    #printReportSection th, #printReportSection td {
-        display: table-cell !important;
-    }
-    @page {
-        size: A4 portrait;
-        margin: 10mm;
-    }
-}
+            body * {
+                visibility: hidden !important;
+            }
+            #printReportSection, #printReportSection * {
+                visibility: visible !important;
+            }
+            #printReportSection {
+                display: block !important;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 10mm !important;
+                background: white !important;
+                color: black !important;
+            }
+            #printReportSection table {
+                display: table !important;
+                width: 100% !important;
+                border-collapse: collapse !important;
+            }
+            #printReportSection tr {
+                display: table-row !important;
+            }
+            #printReportSection th, #printReportSection td {
+                display: table-cell !important;
+            }
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
+        }
     </style>
 </head>
 <body class="text-gray-800 antialiased selection:bg-emerald-500 selection:text-white">
@@ -604,7 +603,8 @@
 
         async function fetchTransactionsFromCloud() {
             if (!supabaseClient) return;
-            const { data, error } = await supabaseClient.from('transactions').select('*').order('id', { ascending: false });
+            // Urutkan berdasarkan waktu input/ID (terlama ke terbaru) secara kronologis baku
+            const { data, error } = await supabaseClient.from('transactions').select('*').order('id', { ascending: true });
             if (!error && data) {
                 transactions = data;
                 updateDashboard();
@@ -705,8 +705,9 @@
             alert("Pengaturan Tanda Tangan berhasil disimpan!");
         }
 
+        // Kalkulasi saldo berjalan secara kronologis (dari transaksi terlama ke terbaru)
         function getProcessedTransactions() {
-            let sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+            let sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date) || a.id - b.id);
             let runningBalance = 0;
             let result = sorted.map(t => {
                 let amt = parseFloat(t.amount);
@@ -715,12 +716,12 @@
                 runningBalance += (pemasukan - pengeluaran);
                 return { ...t, pemasukan, pengeluaran, saldo: runningBalance };
             });
-            return result.reverse();
+            return result; // Urutan lama ke baru (kronologis baku buku kas)
         }
 
         function exportToExcel() {
             if (transactions.length === 0) { alert("Belum ada data transaksi!"); return; }
-            const processed = getProcessedTransactions().reverse();
+            const processed = getProcessedTransactions();
             const dataFormatted = processed.map((t, idx) => ({
                 "No": idx + 1, "Tanggal": t.date, "Kategori": t.category,
                 "Jenis Transaksi": t.type === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran',
@@ -828,7 +829,7 @@
             const desc = document.getElementById('txDescription').value;
 
             const newTx = { id: Date.now(), date, type, category, amount, desc };
-            transactions.unshift(newTx);
+            transactions.push(newTx); // Tambah ke akhir array agar kronologis
             saveDataLocal();
             await saveDataToCloud(newTx);
 
@@ -849,11 +850,21 @@
             allTbody.innerHTML = '';
             printTbody.innerHTML = '';
 
-            const processed = getProcessedTransactions();
-            const chronologicallySorted = [...processed].reverse();
+            const processed = getProcessedTransactions(); // Kronologis (lama ke baru)
+            const recentReversed = [...processed].reverse(); // Terkini di atas untuk dashboard
 
-            chronologicallySorted.forEach((t, index) => {
+            // Render Print & Tabel Utama secara Kronologis Rapi (No 1, 2, 3...)
+            processed.forEach((t, index) => {
                 const isIncome = t.type === 'pemasukan';
+                const typeBadge = isIncome 
+                    ? `<span class="px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold text-[10px]">Pemasukan</span>`
+                    : `<span class="px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-semibold text-[10px]">Pengeluaran</span>`;
+                
+                const pemasukanStr = t.pemasukan > 0 ? `<span class="text-green-700 font-bold">${formatRupiah(t.pemasukan)}</span>` : '-';
+                const pengeluaranStr = t.pengeluaran > 0 ? `<span class="text-red-600 font-bold">${formatRupiah(t.pengeluaran)}</span>` : '-';
+                const saldoStr = `<span class="font-bold text-gray-900">${formatRupiah(t.saldo)}</span>`;
+
+                // 1. Baris untuk Cetak / PDF Report
                 printTbody.innerHTML += `
                     <tr>
                         <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${index + 1}</td>
@@ -866,29 +877,8 @@
                         <td style="border: 1px solid #ddd; padding: 6px; text-align: right; font-weight: bold;">${formatRupiah(t.saldo)}</td>
                     </tr>
                 `;
-            });
 
-            processed.forEach((t, index) => {
-                const isIncome = t.type === 'pemasukan';
-                const typeBadge = isIncome 
-                    ? `<span class="px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold text-[10px]">Pemasukan</span>`
-                    : `<span class="px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-semibold text-[10px]">Pengeluaran</span>`;
-                
-                const pemasukanStr = t.pemasukan > 0 ? `<span class="text-green-700 font-bold">${formatRupiah(t.pemasukan)}</span>` : '-';
-                const pengeluaranStr = t.pengeluaran > 0 ? `<span class="text-red-600 font-bold">${formatRupiah(t.pengeluaran)}</span>` : '-';
-                const saldoStr = `<span class="font-bold text-gray-900">${formatRupiah(t.saldo)}</span>`;
-
-                if (index < 5) {
-                    recentTbody.innerHTML += `
-                        <tr>
-                            <td class="p-3">${t.date}</td>
-                            <td class="p-3 font-medium text-gray-700">${t.category}</td>
-                            <td class="p-3 text-gray-500">${t.desc}</td>
-                            <td class="p-3 text-right">${isIncome ? '+' : '-'}${formatRupiah(t.amount)}</td>
-                        </tr>
-                    `;
-                }
-
+                // 2. Baris untuk Tabel Utama Laporan di Web (Urut Kronologis dari yang lama)
                 allTbody.innerHTML += `
                     <tr>
                         <td class="p-3">${t.date}</td>
@@ -903,6 +893,21 @@
                         </td>
                     </tr>
                 `;
+            });
+
+            // Render Dashboard (Terkini di atas)
+            recentReversed.forEach((t, index) => {
+                if (index < 5) {
+                    const isIncome = t.type === 'pemasukan';
+                    recentTbody.innerHTML += `
+                        <tr>
+                            <td class="p-3">${t.date}</td>
+                            <td class="p-3 font-medium text-gray-700">${t.category}</td>
+                            <td class="p-3 text-gray-500">${t.desc}</td>
+                            <td class="p-3 text-right">${isIncome ? '+' : '-'}${formatRupiah(t.amount)}</td>
+                        </tr>
+                    `;
+                }
             });
         }
 
