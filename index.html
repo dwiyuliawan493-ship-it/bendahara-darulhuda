@@ -32,14 +32,14 @@
         .border-darulhuda { border-color: #064e3b; }
 
         @media print {
-            body * { visibility: hidden; }
-            #printReportSection, #printReportSection * { visibility: visible; }
-            #printReportSection {
-                position: absolute; left: 0; top: 0; width: 100%;
-                margin: 0; padding: 10mm; background: white !important; color: black !important;
-            }
-            @page { size: A4 portrait; margin: 12mm; }
-        }
+    body * { display: none !important; }
+    #printReportSection, #printReportSection * { display: block !important; visibility: visible !important; }
+    #printReportSection {
+        position: absolute; left: 0; top: 0; width: 100%;
+        margin: 0; padding: 10mm; background: white !important; color: black !important;
+    }
+    @page { size: A4 portrait; margin: 12mm; }
+}
     </style>
 </head>
 <body class="text-gray-800 antialiased selection:bg-emerald-500 selection:text-white">
