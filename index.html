@@ -32,13 +32,39 @@
         .border-darulhuda { border-color: #064e3b; }
 
         @media print {
-    body * { display: none !important; }
-    #printReportSection, #printReportSection * { display: block !important; visibility: visible !important; }
-    #printReportSection {
-        position: absolute; left: 0; top: 0; width: 100%;
-        margin: 0; padding: 10mm; background: white !important; color: black !important;
+    @media print {
+    body * {
+        visibility: hidden !important;
     }
-    @page { size: A4 portrait; margin: 12mm; }
+    #printReportSection, #printReportSection * {
+        visibility: visible !important;
+    }
+    #printReportSection {
+        display: block !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 10mm !important;
+        background: white !important;
+        color: black !important;
+    }
+    #printReportSection table {
+        display: table !important;
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+    #printReportSection tr {
+        display: table-row !important;
+    }
+    #printReportSection th, #printReportSection td {
+        display: table-cell !important;
+    }
+    @page {
+        size: A4 portrait;
+        margin: 10mm;
+    }
 }
     </style>
 </head>
